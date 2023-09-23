@@ -1,0 +1,278 @@
+#!/bin/bash
+
+DATA_FILE="job_applications.txt"
+
+RESET="\033[0m"
+GREEN="\033[32m"
+RED="\033[31m"
+YELLOW="\033[33m"
+BLUE="\033[34m"
+
+count_applications() {
+    local total_count=$(wc -l < "$DATA_FILE")
+    echo "$total_count"
+}
+
+count_status() {
+    local status="$1"
+    local status_count=$(grep -c "^.*|.*|.*|$status|" "$DATA_FILE")
+    echo "$status_count"
+}
+
+add_application() {
+    clear
+    echo -e "Add a New Job Application"
+    echo "-------------------------"
+    echo -n "Company: "
+    read company
+    echo -n "Position: "
+    read position
+    echo -n "Date Applied (YYYY-MM-DD): "
+    read date_applied
+    echo -n "Status: "
+    read status
+    echo -n "Job Link (leave blank if none): "
+    read job_link
+
+    if [ -n "$company" ] && [ -n "$position" ] && [ -n "$date_applied" ] && [ -n "$status" ]; then
+        if [ -z "$job_link" ]; then
+            job_link="N/A"
+        fi
+        echo "$company|$position|$date_applied|$status|$job_link" >> "$DATA_FILE"
+        echo -e "${GREEN}Application added successfully!${RESET}"
+    else
+        echo -e "${RED}Please fill in all fields.${RESET}"
+    fi
+    read -n 1 -s -r -p "Press any key to continue..."
+}
+
+list_applications_by_status() {
+    local status="$1"
+    local total_count=$(count_applications)
+    local status_count=$(count_status "$status")
+
+    clear
+    echo -e "Job Application Tracker - $status"
+    echo "---------------------------------"
+    echo -e "Total Applications: $status_count"
+    
+    if [ "$status_count" -eq 0 ]; then
+        echo "No job applications found with the status '$status'."
+    else
+        echo -e "ID | Company            | Position           | Date Applied   | Status"
+        echo "---------------------------------------------------------------"
+        app_id=1
+        while IFS="|" read -r company position date_applied app_status job_link; do
+            if [ "$app_status" == "$status" ]; then
+                case "$app_status" in
+                    "Applied")
+                        status_color="${YELLOW}$app_status${RESET}"
+                        ;;
+                    "Interviewing")
+                        status_color="${BLUE}$app_status${RESET}"
+                        ;;
+                    "Offered")
+                        status_color="${GREEN}$app_status${RESET}"
+                        ;;
+                    "Rejected" | "Withdrawn")
+                        status_color="${RED}$app_status${RESET}"
+                        ;;
+                    *)
+                        status_color="$app_status"
+                        ;;
+                esac
+                echo -e "$app_id | $company            | $position           | $date_applied   | $status_color"
+                app_id=$((app_id + 1))
+            fi
+        done < "$DATA_FILE"
+        echo "---------------------------------------------------------------"
+        read -n 1 -s -r -p "Press 'b' to go back or enter the ID of the application to view: " key
+        echo
+
+        if [ "$key" == "b" ]; then
+            return
+        elif [ "$key" -le "$status_count" ]; then
+            view_application "$key" "$status"
+        else
+            echo -e "${RED}Invalid application ID. Please try again.${RESET}"
+            read -n 1 -s -r -p "Press any key to continue..."
+        fi
+    fi
+}
+
+
+view_application() {
+    local app_id="$1"
+    local status="$2"
+    clear
+    echo -e "Viewing Application ID $app_id - $status"
+    echo "----------------------------------------"
+    awk -F "|" -v id="$app_id" -v status="$status" '{ if (NR==id && $4 == status) { printf "Company: %s\nPosition: %s\nDate Applied: %s\nStatus: %s\nJob Link: %s\n", $1, $2, $3, $4, $5 } }' "$DATA_FILE"
+    read -n 1 -s -r -p "Press any key to continue..."
+}
+
+
+list_applications() {
+    clear
+    local total_count=$(count_applications)
+    local applied_count=$(count_status "Applied")
+    local interviewing_count=$(count_status "Interviewing")
+    local offered_count=$(count_status "Offered")
+    local rejected_count=$(count_status "Rejected")
+    local withdrawn_count=$(count_status "Withdrawn")
+    
+    echo -e "Job Application Tracker"
+    echo "-----------------------"
+    echo -e "Total Applications: $total_count | Applied: $applied_count | Interviewing: $interviewing_count | Offered: $offered_count | Rejected: $rejected_count | Withdrawn: $withdrawn_count"
+    
+    if [ "$total_count" -eq 0 ]; then
+        echo "No job applications found."
+    else
+        echo -e "ID | Company            | Position           | Date Applied   | Status"
+        echo "---------------------------------------------------------------"
+        app_id=1
+        while IFS="|" read -r company position date_applied app_status job_link; do
+            case "$app_status" in
+                "Applied")
+                    status_color="${YELLOW}$app_status${RESET}"
+                    ;;
+                "Interviewing")
+                    status_color="${BLUE}$app_status${RESET}"
+                    ;;
+                "Offered")
+                    status_color="${GREEN}$app_status${RESET}"
+                    ;;
+                "Rejected" | "Withdrawn")
+                    status_color="${RED}$app_status${RESET}"
+                    ;;
+                *)
+                    status_color="$app_status"
+                    ;;
+            esac
+            echo -e "$app_id | $company            | $position           | $date_applied   | $status_color"
+            app_id=$((app_id + 1))
+        done < "$DATA_FILE"
+        echo "---------------------------------------------------------------"
+        read -n 1 -s -r -p "Press 'b' to go back, 'r' to remove an application, 'u' to update status, 'f' to filter by status, or enter the ID of the application to view: " key
+        echo
+
+        if [ "$key" == "b" ]; then
+            return
+        elif [ "$key" == "r" ]; then
+            remove_application
+        elif [ "$key" == "u" ]; then
+            update_status
+        elif [ "$key" == "f" ]; then
+            filter_menu
+        elif [ "$key" -le "$total_count" ]; then
+            view_application "$key" "$app_status"
+        else
+            echo -e "${RED}Invalid application ID. Please try again.${RESET}"
+            read -n 1 -s -r -p "Press any key to continue..."
+        fi
+    fi
+}
+
+remove_application() {
+    clear
+    echo -e "Remove Application"
+    echo "-----------------"
+    echo -n "Enter the ID of the application to remove: "
+    read app_id
+
+    if [ -n "$app_id" ] && [ "$app_id" -le "$total_count" ]; then
+        sed -i "${app_id}d" "$DATA_FILE"
+        echo -e "${GREEN}Application removed successfully!${RESET}"
+    else
+        echo -e "${RED}Invalid application ID. Please try again.${RESET}"
+    fi
+    read -n 1 -s -r -p "Press any key to continue..."
+}
+
+
+update_status() {
+    clear
+    echo -e "Update Application Status"
+    echo "-------------------------"
+    echo -n "Enter the ID of the application to update: "
+    read app_id
+
+    if [ -n "$app_id" ] && [ "$app_id" -le "$total_count" ]; then
+        echo -n "Enter the new status: "
+        read new_status
+        sed -i "${app_id}s/[^|]*$/$new_status/" "$DATA_FILE"
+        echo -e "${GREEN}Application status updated successfully!${RESET}"
+    else
+        echo -e "${RED}Invalid application ID. Please try again.${RESET}"
+    fi
+    read -n 1 -s -r -p "Press any key to continue..."
+}
+
+filter_menu() {
+    clear
+    echo -e "Filter Job Applications by Status"
+    echo "---------------------------------"
+    echo "1. Applied"
+    echo "2. Interviewing"
+    echo "3. Offered"
+    echo "4. Rejected"
+    echo "5. Withdrawn"
+    echo "6. Back to Main Menu"
+    read -n 1 -s -r filter_choice
+    echo
+
+    case "$filter_choice" in
+        1)
+            list_applications_by_status "Applied"
+            ;;
+        2)
+            list_applications_by_status "Interviewing"
+            ;;
+        3)
+            list_applications_by_status "Offered"
+            ;;
+        4)
+            list_applications_by_status "Rejected"
+            ;;
+        5)
+            list_applications_by_status "Withdrawn"
+            ;;
+        6)
+            return
+            ;;
+        *)
+            echo -e "${RED}Invalid choice. Please try again.${RESET}"
+            read -n 1 -s -r -p "Press any key to continue..."
+            filter_menu
+            ;;
+    esac
+}
+
+# Main menu
+while true; do
+    clear
+    echo -e "Job Application Tracker"
+    echo "-----------------------"
+    echo "1. Add Job Application"
+    echo "2. List Job Applications"
+    echo "3. Exit"
+    read -n 1 -s -r choice
+    echo
+
+    case "$choice" in
+        1)
+            add_application
+            ;;
+        2)
+            list_applications
+            ;;
+        3)
+            clear
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}Invalid choice. Please try again.${RESET}"
+            read -n 1 -s -r -p "Press any key to continue..."
+            ;;
+    esac
+done
