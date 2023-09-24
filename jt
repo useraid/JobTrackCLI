@@ -1,24 +1,29 @@
 #!/bin/bash
 
+# Define the path to the data file
 DATA_FILE="job_applications.txt"
 
+# ANSI escape codes for text formatting and colors
 RESET="\033[0m"
 GREEN="\033[32m"
 RED="\033[31m"
 YELLOW="\033[33m"
 BLUE="\033[34m"
 
+# Function to count the total number of job applications
 count_applications() {
     local total_count=$(wc -l < "$DATA_FILE")
     echo "$total_count"
 }
 
+# Function to count the number of applications with a specific status
 count_status() {
     local status="$1"
     local status_count=$(grep -c "^.*|.*|.*|$status|" "$DATA_FILE")
     echo "$status_count"
 }
 
+# Function to add a new job application
 add_application() {
     clear
     echo -e "Add a New Job Application"
@@ -46,6 +51,7 @@ add_application() {
     read -n 1 -s -r -p "Press any key to continue..."
 }
 
+# Function to list job applications by status
 list_applications_by_status() {
     local status="$1"
     local total_count=$(count_applications)
@@ -100,7 +106,7 @@ list_applications_by_status() {
     fi
 }
 
-
+# Function to view a specific job application by status
 view_application() {
     local app_id="$1"
     local status="$2"
@@ -111,7 +117,9 @@ view_application() {
     read -n 1 -s -r -p "Press any key to continue..."
 }
 
-
+# Function to list all job applications
+# Function to list all job applications
+# Function to list all job applications with color-coded status
 list_applications() {
     clear
     local total_count=$(count_applications)
@@ -120,40 +128,50 @@ list_applications() {
     local offered_count=$(count_status "Offered")
     local rejected_count=$(count_status "Rejected")
     local withdrawn_count=$(count_status "Withdrawn")
-    
+
+    # Define color codes
+    yellow_color=$(tput setaf 3)
+    blue_color=$(tput setaf 4)
+    green_color=$(tput setaf 2)
+    red_color=$(tput setaf 1)
+    reset_color=$(tput sgr0)
+
     echo -e "Job Application Tracker"
     echo "-----------------------"
     echo -e "Total Applications: $total_count | Applied: $applied_count | Interviewing: $interviewing_count | Offered: $offered_count | Rejected: $rejected_count | Withdrawn: $withdrawn_count"
-    
+
     if [ "$total_count" -eq 0 ]; then
         echo "No job applications found."
     else
-        echo -e "ID | Company            | Position           | Date Applied   | Status"
+        # Header row
+        printf "%-3s | %-20s | %-20s | %-12s | %-10s\n" "ID" "Company" "Position" "Date Applied" "Status"
         echo "---------------------------------------------------------------"
         app_id=1
         while IFS="|" read -r company position date_applied app_status job_link; do
+            # Colorize the status based on its value
             case "$app_status" in
                 "Applied")
-                    status_color="${YELLOW}$app_status${RESET}"
+                    status_color="${yellow_color}$app_status${reset_color}"
                     ;;
                 "Interviewing")
-                    status_color="${BLUE}$app_status${RESET}"
+                    status_color="${blue_color}$app_status${reset_color}"
                     ;;
                 "Offered")
-                    status_color="${GREEN}$app_status${RESET}"
+                    status_color="${green_color}$app_status${reset_color}"
                     ;;
                 "Rejected" | "Withdrawn")
-                    status_color="${RED}$app_status${RESET}"
+                    status_color="${red_color}$app_status${reset_color}"
                     ;;
                 *)
                     status_color="$app_status"
                     ;;
             esac
-            echo -e "$app_id | $company            | $position           | $date_applied   | $status_color"
+            # Data rows
+            printf "%-3s | %-20s | %-20s | %-12s | %-10s\n" "$app_id" "$company" "$position" "$date_applied" "$status_color"
             app_id=$((app_id + 1))
         done < "$DATA_FILE"
         echo "---------------------------------------------------------------"
-        read -n 1 -s -r -p "Press 'b' to go back, 'r' to remove an application, 'u' to update status, 'f' to filter by status, or enter the ID of the application to view: " key
+        read -n 1 -s -r -p "Back(b), Remove Application(r), Update(u), Filter(f), View(Enter ID): " key
         echo
 
         if [ "$key" == "b" ]; then
@@ -167,12 +185,16 @@ list_applications() {
         elif [ "$key" -le "$total_count" ]; then
             view_application "$key" "$app_status"
         else
-            echo -e "${RED}Invalid application ID. Please try again.${RESET}"
+            echo -e "${RED}Invalid application ID. Please try again.${reset_color}"
             read -n 1 -s -r -p "Press any key to continue..."
         fi
     fi
 }
 
+
+
+
+# Function to remove a specific job application
 remove_application() {
     clear
     echo -e "Remove Application"
@@ -189,7 +211,7 @@ remove_application() {
     read -n 1 -s -r -p "Press any key to continue..."
 }
 
-
+# Function to update the status of a specific job application
 update_status() {
     clear
     echo -e "Update Application Status"
@@ -208,6 +230,7 @@ update_status() {
     read -n 1 -s -r -p "Press any key to continue..."
 }
 
+# Function to filter job applications by status
 filter_menu() {
     clear
     echo -e "Filter Job Applications by Status"
