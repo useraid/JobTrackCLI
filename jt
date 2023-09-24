@@ -58,7 +58,7 @@ list_applications_by_status() {
     local status_count=$(count_status "$status")
 
     clear
-    echo -e "Job Application Tracker - $status"
+    echo -e "JobTrackCLI - $status"
     echo "---------------------------------"
     echo -e "Total Applications: $status_count"
     
@@ -106,19 +106,16 @@ list_applications_by_status() {
     fi
 }
 
-# Function to view a specific job application by status
+# Function to view a specific job application by ID and status
 view_application() {
     local app_id="$1"
-    local status="$2"
     clear
-    echo -e "Viewing Application ID $app_id - $status"
-    echo "----------------------------------------"
-    awk -F "|" -v id="$app_id" -v status="$status" '{ if (NR==id && $4 == status) { printf "Company: %s\nPosition: %s\nDate Applied: %s\nStatus: %s\nJob Link: %s\n", $1, $2, $3, $4, $5 } }' "$DATA_FILE"
+    echo -e "Viewing Application ID $app_id"
+    echo "------------------------------"
+    awk -F "|" -v id="$app_id" '{ if (NR==id) { printf "Company: %s\nPosition: %s\nDate Applied: %s\nStatus: %s\nJob Link: %s\n", $1, $2, $3, $4, $5 } }' "$DATA_FILE"
     read -n 1 -s -r -p "Press any key to continue..."
 }
 
-# Function to list all job applications
-# Function to list all job applications
 # Function to list all job applications with color-coded status
 list_applications() {
     clear
@@ -136,7 +133,7 @@ list_applications() {
     red_color=$(tput setaf 1)
     reset_color=$(tput sgr0)
 
-    echo -e "Job Application Tracker"
+    echo -e "JobTrackCLI"
     echo "-----------------------"
     echo -e "Total Applications: $total_count | Applied: $applied_count | Interviewing: $interviewing_count | Offered: $offered_count | Rejected: $rejected_count | Withdrawn: $withdrawn_count"
 
@@ -274,7 +271,7 @@ filter_menu() {
 # Main menu
 while true; do
     clear
-    echo -e "Job Application Tracker"
+    echo -e "JobTrackCLI"
     echo "-----------------------"
     echo "1. Add Job Application"
     echo "2. List Job Applications"
